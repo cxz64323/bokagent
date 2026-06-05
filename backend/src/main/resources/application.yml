@@ -98,6 +98,14 @@ mybatis-plus:
       id-type: auto
   mapper-locations: classpath*:mapper/**/*.xml
 
+# 工作流引擎配置
+workflow:
+  engine: custom  # 可选值: custom, langgraph4j
+  # 当使用langgraph4j时的额外配置
+  langgraph:
+    state-schema: default
+    checkpoint-enabled: false
+
 # MinIO配置
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

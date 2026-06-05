@@ -92,6 +92,13 @@
             <version>${minio.version}</version>
         </dependency>
 
+        <!-- LangGraph4J -->
+        <dependency>
+            <groupId>com.langgraph4j</groupId>
+            <artifactId>langgraph4j-core</artifactId>
+            <version>${langgraph4j.version}</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

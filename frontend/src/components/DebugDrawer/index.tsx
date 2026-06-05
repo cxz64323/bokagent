@@ -24,32 +24,35 @@ const DebugDrawer: React.FC<DebugDrawerProps> = ({ visible, onClose, nodes, edge
     try {
       const input = JSON.parse(testData);
       
-      // 创建执行记录
-      const record = {
-        workflowId: 1, // TODO: 使用实际的工作流ID
-        inputData: input,
-      };
+      // TODO: 使用真实的工作流ID（从useWorkflow获取）
+      const workflowId = 1;
+      
+      // 调用后端执行工作流
+      const response = await fetch(`/api/workflow/${workflowId}/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(input),
+      });
 
-      const createResponse = await executionApi.createExecution(record);
-      const executionId = createResponse.data.data.id;
-
-      // TODO: 调用后端执行工作流
-      // 目前先模拟执行结果
-      setTimeout(() => {
+      const result = await response.json();
+      
+      if (result.code === 200) {
+        const executionRecord = result.data;
         setOutput(JSON.stringify({
-          status: 'SUCCESS',
-          message: '工作流执行成功 ✨',
-          output: '这是模拟的输出结果',
+          status: executionRecord.status,
+          message: executionRecord.status === 'SUCCESS' ? '工作流执行成功 ✨' : '执行失败',
+          output: executionRecord.outputData,
+          error: executionRecord.error,
+          startTime: executionRecord.startTime,
+          endTime: executionRecord.endTime,
         }, null, 2));
         
-        // 更新执行记录状态
-        executionApi.updateExecution(executionId, {
-          status: 'SUCCESS',
-          outputData: { result: '模拟结果' },
-        });
-        
-        message.success('执行完成！🎉');
-      }, 1000);
+        message.success(executionRecord.status === 'SUCCESS' ? '执行完成！🎉' : '执行失败');
+      } else {
+        throw new Error(result.message || '执行失败');
+      }
 
     } catch (error: any) {
       console.error('执行失败:', error);
