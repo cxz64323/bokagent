@@ -1,6 +1,7 @@
 package com.bokagent;
 
 import lombok.extern.slf4j.Slf4j;
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -13,6 +14,7 @@ import java.util.Map;
  * AI Agent工作流编排系统
  */
 @SpringBootApplication
+@MapperScan("com.bokagent.mapper")
 @Slf4j
 public class BokAgentApplication {
 

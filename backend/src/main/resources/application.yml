@@ -15,24 +15,13 @@ spring:
   
   # 数据库配置 - PostgreSQL (工作流数据)
   datasource:
-    workflow:
-      url: jdbc:postgresql://${PG_HOST:localhost}:${PG_PORT:5432}/workflow_db?useUnicode=true&characterEncoding=UTF-8
-      username: ${PG_USER:bokagent}
-      password: ${PG_PASSWORD:secret}
-      driver-class-name: org.postgresql.Driver
-      hikari:
-        maximum-pool-size: 20
-        minimum-idle: 5
-    
-    # 数据库配置 - MySQL (业务数据)
-    business:
-      url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/business_db?useUnicode=true&characterEncoding=utf8mb4&connectionCollation=utf8mb4_unicode_ci
-      username: ${MYSQL_USER:bokagent}
-      password: ${MYSQL_PASSWORD:secret}
-      driver-class-name: com.mysql.cj.jdbc.Driver
-      hikari:
-        maximum-pool-size: 20
-        minimum-idle: 5
+    url: jdbc:postgresql://${PG_HOST:localhost}:${PG_PORT:5432}/workflow_db?useUnicode=true&characterEncoding=UTF-8
+    username: ${PG_USER:bokagent}
+    password: ${PG_PASSWORD:secret}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
   
   # Flyway配置
   flyway:
