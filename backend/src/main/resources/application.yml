@@ -1,0 +1,192 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: bokagent
+  
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  
+  # 数据库配置 - PostgreSQL (工作流数据)
+  datasource:
+    workflow:
+      url: jdbc:postgresql://${PG_HOST:localhost}:${PG_PORT:5432}/workflow_db?useUnicode=true&characterEncoding=UTF-8
+      username: ${PG_USER:bokagent}
+      password: ${PG_PASSWORD:secret}
+      driver-class-name: org.postgresql.Driver
+      hikari:
+        maximum-pool-size: 20
+        minimum-idle: 5
+    
+    # 数据库配置 - MySQL (业务数据)
+    business:
+      url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/business_db?useUnicode=true&characterEncoding=utf8mb4&connectionCollation=utf8mb4_unicode_ci
+      username: ${MYSQL_USER:bokagent}
+      password: ${MYSQL_PASSWORD:secret}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 20
+        minimum-idle: 5
+  
+  # Flyway配置
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  
+  # Redis配置
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: 0
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+  
+  # Spring AI配置
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:sk-placeholder}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      chat:
+        options:
+          model: gpt-4
+    
+    deepseek:
+      api-key: ${DEEPSEEK_API_KEY:sk-placeholder}
+      base-url: https://api.deepseek.com/v1
+      chat:
+        options:
+          model: deepseek-chat
+    
+    qwen:
+      api-key: ${QWEN_API_KEY:sk-placeholder}
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      chat:
+        options:
+          model: qwen-plus
+  
+  # Jackson配置
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+  
+  # 消息编码
+  messages:
+    encoding: UTF-8
+    basename: i18n/messages
+  
+  # 异步任务配置
+  task:
+    execution:
+      executor-type: virtual
+      pool:
+        core-size: 10
+        max-size: 100
+        queue-capacity: 1000
+
+# MyBatis-Plus配置
+mybatis-plus:
+  configuration:
+    call-setters-on-nulls: true
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+  mapper-locations: classpath*:mapper/**/*.xml
+
+# MinIO配置
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:miniosecret}
+  bucket-name: ${MINIO_BUCKET:audio-files}
+
+# MCP协议配置
+mcp:
+  server:
+    enabled: true
+    name: "BokAgent MCP Server"
+    version: "1.0.0"
+    capabilities:
+      tools: true
+      resources: true
+      prompts: true
+    transports:
+      sse:
+        enabled: true
+        path: /mcp/sse
+      websocket:
+        enabled: true
+        path: /mcp/ws
+  
+  client:
+    enabled: true
+    servers: []
+
+# 重试配置
+retry:
+  default:
+    max-attempts: 3
+    initial-delay-ms: 1000
+    backoff-multiplier: 2.0
+    max-delay-ms: 30000
+    retryable-exceptions:
+      - java.net.SocketTimeoutException
+      - java.io.IOException
+
+# 超时配置
+timeout:
+  tool-execution: 30000      # 工具执行超时30秒
+  llm-call: 60000            # LLM调用超时60秒
+  tts-synthesis: 120000      # TTS合成超时120秒
+  mcp-request: 10000         # MCP请求超时10秒
+  workflow-execution: 300000 # 工作流执行超时5分钟
+
+# 缓存配置
+cache:
+  enabled: true
+  default-ttl: 3600          # 默认缓存1小时
+  tool-result-ttl: 1800      # 工具结果缓存30分钟
+  llm-response-ttl: 7200     # LLM响应缓存2小时
+
+# 日志配置
+logging:
+  charset:
+    console: UTF-8
+    file: UTF-8
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  level:
+    root: INFO
+    com.bokagent: DEBUG
+    org.springframework.ai: DEBUG
+  file:
+    name: /app/logs/application.log
+    max-size: 10MB
+    max-history: 30
+
+# Actuator配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
