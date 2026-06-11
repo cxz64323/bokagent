@@ -48,12 +48,14 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- Spring AI -->
+        <!-- Spring AI - 暂时注释，等待正式版本发布 -->
+        <!--
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
             <version>${spring-ai.version}</version>
         </dependency>
+        -->
 
         <!-- MyBatis-Plus -->
         <dependency>
@@ -93,12 +95,14 @@
             <version>${minio.version}</version>
         </dependency>
 
-        <!-- LangGraph4J -->
+        <!-- LangGraph4J - 暂时注释，需要添加到自定义仓库 -->
+        <!--
         <dependency>
             <groupId>com.langgraph4j</groupId>
             <artifactId>langgraph4j-core</artifactId>
             <version>${langgraph4j.version}</version>
         </dependency>
+        -->
 
         <!-- Lombok -->
         <dependency>
