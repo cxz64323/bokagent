@@ -8,7 +8,6 @@
 - [WorkflowEngine.java](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java)
 - [ExecutionResult.java](file://backend/src/main/java/com/bokagent/engine/ExecutionResult.java)
 - [NodeData.java](file://backend/src/main/java/com/bokagent/entity/NodeData.java)
-- [Node.java](file://backend/src/main/java/com/bokagent/entity/Node.java)
 - [Workflow.java](file://backend/src/main/java/com/bokagent/entity/Workflow.java)
 - [ExecutionRecord.java](file://backend/src/main/java/com/bokagent/entity/ExecutionRecord.java)
 - [application.yml](file://backend/src/main/resources/application.yml)
@@ -17,7 +16,15 @@
 - [ExecutionService.java](file://backend/src/main/java/com/bokagent/service/ExecutionService.java)
 - [WorkflowController.java](file://backend/src/main/java/com/bokagent/controller/WorkflowController.java)
 - [Result.java](file://backend/src/main/java/com/bokagent/common/Result.java)
+- [WorkflowEngineSelector.java](file://backend/src/main/java/com/bokagent/engine/WorkflowEngineSelector.java)
 </cite>
+
+## 更新摘要
+**变更内容**
+- 更新LLM服务当前禁用状态说明
+- 新增Spring AI依赖配置状态说明
+- 更新故障排查指南中的LLM相关问题
+- 更新依赖分析中的Spring AI状态
 
 ## 目录
 1. [引言](#引言)
@@ -32,10 +39,12 @@
 10. [附录](#附录)
 
 ## 引言
-本文件面向“LLM服务抽象层”的技术文档，聚焦于如何通过统一接口屏蔽不同LLM提供商的差异，实现模型无关的提示词构建、参数封装与响应处理；同时阐述该抽象层在工作流引擎中的集成方式（节点执行、上下文传递、状态管理），并提供扩展指南（自定义LLM适配器、接口实现最佳实践、性能优化策略）。文档以仓库现有代码为依据，结合架构图与流程图，帮助读者快速理解并安全地扩展系统。
+本文件面向"LLM服务抽象层"的技术文档，聚焦于如何通过统一接口屏蔽不同LLM提供商的差异，实现模型无关的提示词构建、参数封装与响应处理；同时阐述该抽象层在工作流引擎中的集成方式（节点执行、上下文传递、状态管理），并提供扩展指南（自定义LLM适配器、接口实现最佳实践、性能优化策略）。文档以仓库现有代码为依据，结合架构图与流程图，帮助读者快速理解并安全地扩展系统。
+
+**重要说明**：当前LLM服务处于临时禁用状态。由于Spring AI依赖尚未正式发布，LLM功能目前不可用。系统会在调用时返回警告信息而非实际的LLM调用结果。待Spring AI依赖可用后，可通过取消注释相应代码来启用LLM功能。
 
 ## 项目结构
-后端采用Spring Boot工程，核心模块围绕“服务抽象层 + 工作流引擎 + 控制器 + 数据持久化”组织。LLM服务抽象层位于service包，工作流引擎位于engine包，实体与映射位于entity与mapper包，配置集中在application.yml，数据库迁移脚本位于resources/db/migration。
+后端采用Spring Boot工程，核心模块围绕"服务抽象层 + 工作流引擎 + 控制器 + 数据持久化"组织。LLM服务抽象层位于service包，工作流引擎位于engine包，实体与映射位于entity与mapper包，配置集中在application.yml，数据库迁移脚本位于resources/db/migration。
 
 ```mermaid
 graph TB
@@ -56,9 +65,9 @@ E --> C
 F --> D
 ```
 
-图表来源
+**图表来源**
 - [WorkflowController.java:1-92](file://backend/src/main/java/com/bokagent/controller/WorkflowController.java#L1-92)
-- [LLMService.java:1-67](file://backend/src/main/java/com/bokagent/service/LLMService.java#L1-67)
+- [LLMService.java:1-73](file://backend/src/main/java/com/bokagent/service/LLMService.java#L1-73)
 - [ExecutionService.java:1-113](file://backend/src/main/java/com/bokagent/service/ExecutionService.java#L1-113)
 - [WorkflowEngine.java:1-171](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L1-171)
 - [NodeExecutor.java:1-24](file://backend/src/main/java/com/bokagent/engine/NodeExecutor.java#L1-24)
@@ -67,22 +76,23 @@ F --> D
 - [Workflow.java:1-32](file://backend/src/main/java/com/bokagent/entity/Workflow.java#L1-32)
 - [ExecutionRecord.java:1-40](file://backend/src/main/java/com/bokagent/entity/ExecutionRecord.java#L1-40)
 - [application.yml:1-190](file://backend/src/main/resources/application.yml#L1-190)
-- [pom.xml:1-170](file://backend/pom.xml#L1-170)
+- [pom.xml:1-175](file://backend/pom.xml#L1-175)
 - [V1__create_workflow_tables.sql:1-17](file://backend/src/main/resources/db/migration/V1__create_workflow_tables.sql#L1-17)
 
-章节来源
-- [pom.xml:1-170](file://backend/pom.xml#L1-170)
+**章节来源**
+- [pom.xml:1-175](file://backend/pom.xml#L1-175)
 - [application.yml:1-190](file://backend/src/main/resources/application.yml#L1-190)
 
 ## 核心组件
-- LLM服务抽象层：对外暴露统一的chat接口，内部通过Spring AI ChatClient进行LLM调用，负责提示词拼装与错误包装。
+- LLM服务抽象层：对外暴露统一的chat接口，**当前处于禁用状态**，内部通过注释掉的Spring AI ChatClient进行LLM调用准备，负责提示词拼装与错误包装。**注意：由于Spring AI依赖未配置，服务会返回警告信息而非实际调用**。
 - 节点执行器：实现NodeExecutor接口，将LLM节点的执行纳入工作流执行序列，负责上下文传递与结果标准化。
 - 工作流引擎：负责解析工作流图、拓扑排序执行节点、维护上下文与状态。
 - 执行服务：编排工作流执行、记录执行历史、统一返回格式。
 - 统一响应：Result工具类，规范HTTP层返回结构。
 
-章节来源
-- [LLMService.java:1-67](file://backend/src/main/java/com/bokagent/service/LLMService.java#L1-67)
+**章节来源**
+- [LLMService.java:11-14](file://backend/src/main/java/com/bokagent/service/LLMService.java#L11-L14)
+- [LLMService.java:27-31](file://backend/src/main/java/com/bokagent/service/LLMService.java#L27-L31)
 - [LLMNodeExecutor.java:1-69](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L1-69)
 - [NodeExecutor.java:1-24](file://backend/src/main/java/com/bokagent/engine/NodeExecutor.java#L1-24)
 - [WorkflowEngine.java:1-171](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L1-171)
@@ -90,7 +100,7 @@ F --> D
 - [Result.java:1-42](file://backend/src/main/java/com/bokagent/common/Result.java#L1-42)
 
 ## 架构总览
-LLM服务抽象层通过统一接口屏蔽多提供商差异，结合工作流引擎实现“节点级LLM调用 + 上下文传递 + 标准化结果”的闭环。
+LLM服务抽象层通过统一接口屏蔽多提供商差异，结合工作流引擎实现"节点级LLM调用 + 上下文传递 + 标准化结果"的闭环。**当前LLM功能处于禁用状态，LLM节点将返回警告信息而非实际调用**。
 
 ```mermaid
 graph TB
@@ -103,7 +113,7 @@ WC["WorkflowController"]
 end
 subgraph "服务层"
 ES["ExecutionService"]
-LLM["LLMService"]
+LLM["LLMService (禁用状态)"]
 end
 subgraph "引擎层"
 WE["WorkflowEngine"]
@@ -117,8 +127,8 @@ ER["ExecutionRecord 实体"]
 SQL["V1__create_workflow_tables.sql"]
 end
 subgraph "配置"
-APP["application.yml"]
-POM["pom.xml"]
+APP["application.yml (含LLM配置)"]
+POM["pom.xml (Spring AI依赖注释)"]
 end
 end
 U --> WC
@@ -135,16 +145,16 @@ WF --> SQL
 ER --> SQL
 ```
 
-图表来源
+**图表来源**
 - [WorkflowController.java:1-92](file://backend/src/main/java/com/bokagent/controller/WorkflowController.java#L1-92)
 - [ExecutionService.java:1-113](file://backend/src/main/java/com/bokagent/service/ExecutionService.java#L1-113)
 - [WorkflowEngine.java:1-171](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L1-171)
 - [LLMNodeExecutor.java:1-69](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L1-69)
-- [LLMService.java:1-67](file://backend/src/main/java/com/bokagent/service/LLMService.java#L1-67)
+- [LLMService.java:11-14](file://backend/src/main/java/com/bokagent/service/LLMService.java#L11-L14)
 - [Workflow.java:1-32](file://backend/src/main/java/com/bokagent/entity/Workflow.java#L1-32)
 - [ExecutionRecord.java:1-40](file://backend/src/main/java/com/bokagent/entity/ExecutionRecord.java#L1-40)
-- [application.yml:1-190](file://backend/src/main/resources/application.yml#L1-190)
-- [pom.xml:1-170](file://backend/pom.xml#L1-170)
+- [application.yml:45-67](file://backend/src/main/resources/application.yml#L45-L67)
+- [pom.xml:51-58](file://backend/pom.xml#L51-L58)
 - [V1__create_workflow_tables.sql:1-17](file://backend/src/main/resources/db/migration/V1__create_workflow_tables.sql#L1-17)
 
 ## 详细组件分析
@@ -152,12 +162,15 @@ ER --> SQL
 ### LLM服务抽象层（LLMService）
 - 设计理念
   - 统一入口：对外仅暴露chat(prompt, context)方法，屏蔽底层提供商差异。
-  - 参数封装：将上下文以结构化文本拼接到提示词前，形成“上下文+任务”的完整提示。
+  - 参数封装：将上下文以结构化文本拼接到提示词前，形成"上下文+任务"的完整提示。
   - 错误处理：捕获异常并抛出统一的运行时异常，便于上层统一处理。
+- 当前状态
+  - **临时禁用**：由于Spring AI依赖未配置，服务返回警告信息而非实际调用。
+  - **准备就绪**：代码中保留了完整的实现逻辑，只需取消注释即可启用。
 - 关键实现要点
-  - 使用Spring AI ChatClient进行调用，简化与OpenAI、DeepSeek、DashScope等提供商的对接。
-  - 构建完整提示词：先写入上下文，再追加任务提示，保证LLM能基于上下文生成回复。
-  - 日志记录：记录提示词长度与回复内容，便于调试与审计。
+  - **已注释**：使用Spring AI ChatClient进行调用，简化与OpenAI、DeepSeek、DashScope等提供商的对接。
+  - **已注释**：构建完整提示词：先写入上下文，再追加任务提示，保证LLM能基于上下文生成回复。
+  - **已注释**：日志记录：记录提示词长度与回复内容，便于调试与审计。
 - 复杂度与性能
   - 提示词拼装为线性复杂度O(n)，其中n为上下文键值对数量与提示词长度之和。
   - LLM调用为I/O密集型，受网络与提供商限流影响，建议结合超时与重试策略。
@@ -172,15 +185,17 @@ class ChatClient {
 +prompt(text) Call
 +call() Response
 }
-LLMService --> ChatClient : "调用"
+LLMService --> ChatClient : "调用 (待启用)"
 ```
 
-图表来源
-- [LLMService.java:1-67](file://backend/src/main/java/com/bokagent/service/LLMService.java#L1-67)
+**图表来源**
+- [LLMService.java:11-14](file://backend/src/main/java/com/bokagent/service/LLMService.java#L11-L14)
+- [LLMService.java:27-31](file://backend/src/main/java/com/bokagent/service/LLMService.java#L27-L31)
 
-章节来源
-- [LLMService.java:27-44](file://backend/src/main/java/com/bokagent/service/LLMService.java#L27-44)
-- [LLMService.java:49-65](file://backend/src/main/java/com/bokagent/service/LLMService.java#L49-65)
+**章节来源**
+- [LLMService.java:11-14](file://backend/src/main/java/com/bokagent/service/LLMService.java#L11-L14)
+- [LLMService.java:27-31](file://backend/src/main/java/com/bokagent/service/LLMService.java#L27-L31)
+- [LLMService.java:52-71](file://backend/src/main/java/com/bokagent/service/LLMService.java#L52-L71)
 
 ### LLM节点执行器（LLMNodeExecutor）
 - 角色定位：实现NodeExecutor接口，负责在工作流中执行LLM节点。
@@ -191,27 +206,27 @@ LLMService --> ChatClient : "调用"
   - 错误处理：捕获异常并返回标准化错误结果，包含错误信息与时间戳。
 - 上下文管理
   - 将当前节点输出与传入上下文合并，作为后续节点的输入。
-  - 在上下文中注入“llmResponse”，便于下游节点复用LLM输出。
+  - 在上下文中注入"llmResponse"，便于下游节点复用LLM输出。
 
 ```mermaid
 sequenceDiagram
 participant Engine as "WorkflowEngine"
 participant Exec as "LLMNodeExecutor"
-participant Service as "LLMService"
+participant Service as "LLMService (禁用状态)"
 Engine->>Exec : execute(node, context)
 Exec->>Exec : 读取节点prompt(或默认)
 Exec->>Service : chat(prompt, context)
-Service-->>Exec : 返回LLM回复
+Service-->>Exec : 返回警告信息
 Exec->>Exec : 标准化输出并合并上下文
 Exec-->>Engine : 返回节点执行结果
 ```
 
-图表来源
-- [LLMNodeExecutor.java:22-62](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L22-62)
-- [LLMService.java:27-44](file://backend/src/main/java/com/bokagent/service/LLMService.java#L27-44)
+**图表来源**
+- [LLMNodeExecutor.java:22-62](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L22-L62)
+- [LLMService.java:27-31](file://backend/src/main/java/com/bokagent/service/LLMService.java#L27-L31)
 
-章节来源
-- [LLMNodeExecutor.java:22-62](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L22-62)
+**章节来源**
+- [LLMNodeExecutor.java:22-62](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L22-L62)
 
 ### 工作流引擎（WorkflowEngine）
 - 职责
@@ -240,13 +255,13 @@ Q --> BFS
 BFS --> |是| R["返回最终上下文作为输出"]
 ```
 
-图表来源
-- [WorkflowEngine.java:47-82](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L47-82)
-- [WorkflowEngine.java:120-169](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L120-169)
+**图表来源**
+- [WorkflowEngine.java:47-82](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L47-L82)
+- [WorkflowEngine.java:120-169](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L120-L169)
 
-章节来源
-- [WorkflowEngine.java:47-82](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L47-82)
-- [WorkflowEngine.java:120-169](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L120-169)
+**章节来源**
+- [WorkflowEngine.java:47-82](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L47-L82)
+- [WorkflowEngine.java:120-169](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L120-L169)
 
 ### 执行服务（ExecutionService）
 - 职责
@@ -271,12 +286,12 @@ ExecSvc->>DB : 更新状态/输出/耗时
 ExecSvc-->>Ctrl : 返回执行记录
 ```
 
-图表来源
-- [ExecutionService.java:39-92](file://backend/src/main/java/com/bokagent/service/ExecutionService.java#L39-92)
-- [WorkflowEngine.java:47-82](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L47-82)
+**图表来源**
+- [ExecutionService.java:39-92](file://backend/src/main/java/com/bokagent/service/ExecutionService.java#L39-L92)
+- [WorkflowEngine.java:47-82](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L47-L82)
 
-章节来源
-- [ExecutionService.java:39-92](file://backend/src/main/java/com/bokagent/service/ExecutionService.java#L39-92)
+**章节来源**
+- [ExecutionService.java:39-92](file://backend/src/main/java/com/bokagent/service/ExecutionService.java#L39-L92)
 
 ### 统一响应与实体模型
 - 统一响应（Result）：提供success/error静态工厂方法，统一HTTP层返回结构。
@@ -309,21 +324,21 @@ timestamp created_at
 WORKFLOW ||--o{ EXECUTION_RECORD : "拥有"
 ```
 
-图表来源
-- [Workflow.java:14-32](file://backend/src/main/java/com/bokagent/entity/Workflow.java#L14-32)
-- [ExecutionRecord.java:15-40](file://backend/src/main/java/com/bokagent/entity/ExecutionRecord.java#L15-40)
-- [V1__create_workflow_tables.sql:1-17](file://backend/src/main/resources/db/migration/V1__create_workflow_tables.sql#L1-17)
+**图表来源**
+- [Workflow.java:14-32](file://backend/src/main/java/com/bokagent/entity/Workflow.java#L14-L32)
+- [ExecutionRecord.java:15-40](file://backend/src/main/java/com/bokagent/entity/ExecutionRecord.java#L15-L40)
+- [V1__create_workflow_tables.sql:1-17](file://backend/src/main/resources/db/migration/V1__create_workflow_tables.sql#L1-L17)
 
-章节来源
-- [Result.java:14-40](file://backend/src/main/java/com/bokagent/common/Result.java#L14-40)
-- [Node.java:8-15](file://backend/src/main/java/com/bokagent/entity/Node.java#L8-15)
-- [NodeData.java:9-15](file://backend/src/main/java/com/bokagent/entity/NodeData.java#L9-15)
-- [Workflow.java:14-32](file://backend/src/main/java/com/bokagent/entity/Workflow.java#L14-32)
-- [ExecutionRecord.java:15-40](file://backend/src/main/java/com/bokagent/entity/ExecutionRecord.java#L15-40)
+**章节来源**
+- [Result.java:14-40](file://backend/src/main/java/com/bokagent/common/Result.java#L14-L40)
+- [Node.java:8-15](file://backend/src/main/java/com/bokagent/entity/Node.java#L8-L15)
+- [NodeData.java:9-15](file://backend/src/main/java/com/bokagent/entity/NodeData.java#L9-L15)
+- [Workflow.java:14-32](file://backend/src/main/java/com/bokagent/entity/Workflow.java#L14-L32)
+- [ExecutionRecord.java:15-40](file://backend/src/main/java/com/bokagent/entity/ExecutionRecord.java#L15-L40)
 
 ## 依赖分析
 - 外部依赖
-  - Spring AI OpenAI Starter：提供ChatClient能力，统一OpenAI/DashScope/DeepSeek等提供商接入。
+  - **Spring AI OpenAI Starter**：**当前注释状态**，提供ChatClient能力，统一OpenAI/DashScope/DeepSeek等提供商接入。**待Spring AI正式版本发布后启用**。
   - MyBatis-Plus：ORM框架，配合Flyway进行数据库迁移。
   - Redis/MinIO/LangGraph4J：系统其他能力（非LLM抽象层核心）。
 - 内部耦合
@@ -333,44 +348,46 @@ WORKFLOW ||--o{ EXECUTION_RECORD : "拥有"
 
 ```mermaid
 graph LR
-LLM["LLMService"] <--依赖 --> SPRING_AI["Spring AI ChatClient"]
+LLM["LLMService (禁用)"] <--依赖 --> SPRING_AI["Spring AI ChatClient (注释)"]
 LLMNode["LLMNodeExecutor"] --> LLM
 WE["WorkflowEngine"] --> NE["NodeExecutor(接口)"]
 NE --> LLMNode
 ES["ExecutionService"] --> WE
 ES --> DB["ExecutionRecordMapper"]
-APP["application.yml"] --> SPRING_AI
+APP["application.yml (含LLM配置)"] --> SPRING_AI
+POM["pom.xml (Spring AI依赖注释)"] --> SPRING_AI
 ```
 
-图表来源
-- [LLMService.java:18-19](file://backend/src/main/java/com/bokagent/service/LLMService.java#L18-19)
-- [LLMNodeExecutor.java:19-20](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L19-20)
-- [WorkflowEngine.java:32-39](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L32-39)
-- [ExecutionService.java:30-31](file://backend/src/main/java/com/bokagent/service/ExecutionService.java#L30-31)
-- [application.yml:45-67](file://backend/src/main/resources/application.yml#L45-67)
+**图表来源**
+- [LLMService.java:19-20](file://backend/src/main/java/com/bokagent/service/LLMService.java#L19-L20)
+- [LLMNodeExecutor.java:19-20](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L19-L20)
+- [WorkflowEngine.java:23-30](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L23-L30)
+- [ExecutionService.java:24-31](file://backend/src/main/java/com/bokagent/service/ExecutionService.java#L24-L31)
+- [application.yml:45-67](file://backend/src/main/resources/application.yml#L45-L67)
+- [pom.xml:51-58](file://backend/pom.xml#L51-L58)
 
-章节来源
-- [pom.xml:51-100](file://backend/pom.xml#L51-100)
-- [application.yml:45-67](file://backend/src/main/resources/application.yml#L45-67)
+**章节来源**
+- [pom.xml:51-58](file://backend/pom.xml#L51-L58)
+- [application.yml:45-67](file://backend/src/main/resources/application.yml#L45-L67)
 
 ## 性能考虑
 - LLM调用超时与重试
-  - application.yml中定义了LLM调用超时与通用重试策略，建议结合实际提供商限流与网络状况调整。
+  - application.yml中定义了LLM调用超时与通用重试策略，**当前LLM功能禁用，这些配置不会生效**。
 - 缓存策略
-  - LLM响应缓存默认2小时，可降低重复请求成本；需注意缓存键设计与失效策略。
+  - LLM响应缓存默认2小时，**当前LLM功能禁用，缓存机制不会触发**。
 - 并发与资源池
-  - Spring AI Starter与数据库连接池、Redis连接池均在application.yml中配置，建议根据并发量与延迟目标调优。
+  - Spring AI Starter与数据库连接池、Redis连接池均在application.yml中配置，**当前LLM功能禁用，这些配置不会影响LLM调用**。
 - 日志级别
   - 开发环境可开启DEBUG日志辅助定位问题，生产环境建议适度降低日志量以减少I/O开销。
 
-章节来源
-- [application.yml:138-162](file://backend/src/main/resources/application.yml#L138-162)
-- [application.yml:164-180](file://backend/src/main/resources/application.yml#L164-180)
+**章节来源**
+- [application.yml:138-162](file://backend/src/main/resources/application.yml#L138-L162)
+- [application.yml:164-180](file://backend/src/main/resources/application.yml#L164-L180)
 
 ## 故障排查指南
 - LLM调用失败
-  - 现象：LLMService抛出运行时异常，日志记录错误堆栈。
-  - 排查：检查OPENAI/QWEN/DEEPSEEK的API Key与Base URL配置；确认网络连通性与超时设置。
+  - **当前现象**：LLMService返回警告信息"LLM服务暂未启用，请配置 Spring AI 依赖后重试"。
+  - **排查**：检查pom.xml中Spring AI依赖是否已取消注释；确认application.yml中的LLM配置项是否正确；等待Spring AI正式版本发布。
 - 节点执行异常
   - 现象：LLMNodeExecutor返回错误结果，包含节点ID、错误信息与时间戳。
   - 排查：检查节点prompt是否为空；核对上下文数据结构；查看引擎日志。
@@ -381,16 +398,43 @@ APP["application.yml"] --> SPRING_AI
   - 现象：表结构不一致或字段缺失。
   - 排查：确认Flyway迁移脚本已执行；检查workflows与execution_records表的JSONB字段。
 
-章节来源
-- [LLMService.java:40-43](file://backend/src/main/java/com/bokagent/service/LLMService.java#L40-43)
-- [LLMNodeExecutor.java:50-61](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L50-61)
-- [ExecutionService.java:81-91](file://backend/src/main/java/com/bokagent/service/ExecutionService.java#L81-91)
-- [V1__create_workflow_tables.sql:1-17](file://backend/src/main/resources/db/migration/V1__create_workflow_tables.sql#L1-17)
+**章节来源**
+- [LLMService.java:27-31](file://backend/src/main/java/com/bokagent/service/LLMService.java#L27-L31)
+- [LLMNodeExecutor.java:50-61](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L50-L61)
+- [ExecutionService.java:81-91](file://backend/src/main/java/com/bokagent/service/ExecutionService.java#L81-L91)
+- [V1__create_workflow_tables.sql:1-17](file://backend/src/main/resources/db/migration/V1__create_workflow_tables.sql#L1-L17)
 
 ## 结论
-本抽象层通过统一的LLMService与标准化的节点执行器，有效屏蔽了不同LLM提供商的差异，实现了“模型无关”的提示词构建与响应处理。结合工作流引擎，系统能够以节点为单位编排复杂的推理与生成流程，具备良好的扩展性与可观测性。建议在生产环境中进一步完善缓存策略、监控指标与错误恢复机制，以提升稳定性与性能。
+本抽象层通过统一的LLMService与标准化的节点执行器，有效屏蔽了不同LLM提供商的差异，实现了"模型无关"的提示词构建与响应处理。**当前由于Spring AI依赖未配置，LLM功能处于临时禁用状态**。结合工作流引擎，系统能够以节点为单位编排复杂的推理与生成流程，具备良好的扩展性与可观测性。建议在Spring AI依赖可用后，取消注释相关代码并完善缓存策略、监控指标与错误恢复机制，以提升稳定性与性能。
 
 ## 附录
+
+### 启用LLM功能的操作指南
+- **目标**：启用LLM服务功能，取消当前禁用状态
+- **步骤**
+  - 在pom.xml中取消注释Spring AI依赖：
+    ```xml
+    <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+        <version>${spring-ai.version}</version>
+    </dependency>
+    ```
+  - 在LLMService.java中取消注释相关代码：
+    - 取消注释导入语句：`import org.springframework.ai.chat.client.ChatClient;`
+    - 取消注释字段声明：`private ChatClient chatClient;`
+    - 取消注释@Autowired注解
+    - 取消注释chat方法中的实际实现代码
+  - 配置application.yml中的LLM相关参数
+- **注意事项**
+  - 确保Spring AI版本与项目兼容
+  - 配置正确的API密钥和基础URL
+  - 测试LLM调用功能
+
+**章节来源**
+- [pom.xml:51-58](file://backend/pom.xml#L51-L58)
+- [LLMService.java:4-20](file://backend/src/main/java/com/bokagent/service/LLMService.java#L4-L20)
+- [LLMService.java:32-49](file://backend/src/main/java/com/bokagent/service/LLMService.java#L32-L49)
 
 ### 扩展指南：自定义LLM适配器
 - 目标：新增一个LLM提供商（如Claude、GLM等）的适配器，保持与LLMService的解耦。
@@ -404,10 +448,10 @@ APP["application.yml"] --> SPRING_AI
   - 流式响应：若提供商支持流式输出，可在LLMService中引入回调或异步处理，避免阻塞主线程。
   - 日志与追踪：为每个调用生成traceId，便于跨服务链路追踪。
 
-章节来源
-- [LLMService.java:27-44](file://backend/src/main/java/com/bokagent/service/LLMService.java#L27-44)
-- [NodeExecutor.java:9-23](file://backend/src/main/java/com/bokagent/engine/NodeExecutor.java#L9-23)
-- [WorkflowEngine.java:32-39](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L32-39)
+**章节来源**
+- [LLMService.java:27-44](file://backend/src/main/java/com/bokagent/service/LLMService.java#L27-L44)
+- [NodeExecutor.java:9-23](file://backend/src/main/java/com/bokagent/engine/NodeExecutor.java#L9-L23)
+- [WorkflowEngine.java:32-39](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L32-L39)
 
 ### 接口实现最佳实践
 - LLMService
@@ -420,10 +464,10 @@ APP["application.yml"] --> SPRING_AI
   - 拓扑校验：在执行前验证图的有效性（起始节点唯一、无环等）。
   - 并发安全：确保上下文更新与队列操作的原子性。
 
-章节来源
-- [LLMService.java:49-65](file://backend/src/main/java/com/bokagent/service/LLMService.java#L49-65)
-- [LLMNodeExecutor.java:36-48](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L36-48)
-- [WorkflowEngine.java:109-115](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L109-115)
+**章节来源**
+- [LLMService.java:49-71](file://backend/src/main/java/com/bokagent/service/LLMService.java#L49-L71)
+- [LLMNodeExecutor.java:36-48](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L36-L48)
+- [WorkflowEngine.java:109-115](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L109-L115)
 
 ### 性能优化策略
 - 缓存与预热：对热点提示词与常用上下文进行缓存，减少重复计算。
@@ -431,18 +475,18 @@ APP["application.yml"] --> SPRING_AI
 - 超时与熔断：为LLM调用设置合理超时与熔断阈值，防止雪崩效应。
 - 日志采样：生产环境对高频日志进行采样，降低I/O压力。
 
-章节来源
-- [application.yml:138-162](file://backend/src/main/resources/application.yml#L138-162)
-- [application.yml:164-180](file://backend/src/main/resources/application.yml#L164-180)
+**章节来源**
+- [application.yml:138-162](file://backend/src/main/resources/application.yml#L138-L162)
+- [application.yml:164-180](file://backend/src/main/resources/application.yml#L164-L180)
 
 ### 使用场景示例（路径指引）
 - 执行工作流并获取结果
-  - 控制器入口：[WorkflowController.java:1-92](file://backend/src/main/java/com/bokagent/controller/WorkflowController.java#L1-92)
-  - 执行服务：[ExecutionService.java:39-92](file://backend/src/main/java/com/bokagent/service/ExecutionService.java#L39-92)
-  - 引擎执行：[WorkflowEngine.java:47-82](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L47-82)
+  - 控制器入口：[WorkflowController.java:1-92](file://backend/src/main/java/com/bokagent/controller/WorkflowController.java#L1-L92)
+  - 执行服务：[ExecutionService.java:39-92](file://backend/src/main/java/com/bokagent/service/ExecutionService.java#L39-L92)
+  - 引擎执行：[WorkflowEngine.java:47-82](file://backend/src/main/java/com/bokagent/engine/WorkflowEngine.java#L47-L82)
 - LLM节点调用
-  - 节点执行器：[LLMNodeExecutor.java:22-62](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L22-62)
-  - LLM服务：[LLMService.java:27-44](file://backend/src/main/java/com/bokagent/service/LLMService.java#L27-44)
+  - 节点执行器：[LLMNodeExecutor.java:22-62](file://backend/src/main/java/com/bokagent/engine/LLMNodeExecutor.java#L22-L62)
+  - LLM服务：[LLMService.java:27-31](file://backend/src/main/java/com/bokagent/service/LLMService.java#L27-L31)
 - 数据模型
-  - 工作流与执行记录：[Workflow.java:14-32](file://backend/src/main/java/com/bokagent/entity/Workflow.java#L14-32), [ExecutionRecord.java:15-40](file://backend/src/main/java/com/bokagent/entity/ExecutionRecord.java#L15-40)
-  - 数据库迁移：[V1__create_workflow_tables.sql:1-17](file://backend/src/main/resources/db/migration/V1__create_workflow_tables.sql#L1-17)
+  - 工作流与执行记录：[Workflow.java:14-32](file://backend/src/main/java/com/bokagent/entity/Workflow.java#L14-L32), [ExecutionRecord.java:15-40](file://backend/src/main/java/com/bokagent/entity/ExecutionRecord.java#L15-L40)
+  - 数据库迁移：[V1__create_workflow_tables.sql:1-17](file://backend/src/main/resources/db/migration/V1__create_workflow_tables.sql#L1-L17)
