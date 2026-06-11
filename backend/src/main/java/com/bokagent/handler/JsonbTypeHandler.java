@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
-import org.postgresql.util.PGobject;
 
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
@@ -26,12 +25,11 @@ public class JsonbTypeHandler<T> extends BaseTypeHandler<T> {
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, T parameter, JdbcType jdbcType) throws SQLException {
         try {
-            PGobject jsonObject = new PGobject();
-            jsonObject.setType("jsonb");
-            jsonObject.setValue(objectMapper.writeValueAsString(parameter));
-            ps.setObject(i, jsonObject);
+            // 使用通用JSON字符串方式，兼容PostgreSQL和MySQL
+            String jsonStr = objectMapper.writeValueAsString(parameter);
+            ps.setString(i, jsonStr);
         } catch (Exception e) {
-            throw new SQLException("Error converting to JSONB", e);
+            throw new SQLException("Error converting to JSON", e);
         }
     }
 
